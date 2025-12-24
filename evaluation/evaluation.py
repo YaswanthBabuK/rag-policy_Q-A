@@ -5,7 +5,6 @@ Evaluation Script for RAG System
 from dotenv import load_dotenv
 load_dotenv()
 
-import json
 from src.rag import PolicyRAG
 from src.prompts import prompt_v1, prompt_v2
 
@@ -64,10 +63,26 @@ def evaluate_answer(question_data, result):
     print(f"Category: {question_data['category']}")
     print("-" * 80)
 
-    print(f"Answer: {result['answer']}")
-    print(f"Confidence: {result.get('confidence', 'N/A')}")
-    print(f"Sources Cited: {result.get('sources_cited', [])}")
-    print(f"Retrieval Scores: {[f'{s:.3f}' for s in result.get('retrieval_scores', [])]}")
+    answer_text = result["answer"]
+    confidence = result.get("confidence", "N/A")
+    scores = result.get("retrieval_scores", [])
+    sources = result.get("sources_cited", [])
+
+    # ---- Answer type detection ----
+    answer_lower = answer_text.lower()
+    if "outside the scope" in answer_lower:
+        answer_type = "🚫 Out-of-scope question"
+        sources = []  # Explicitly remove sources
+    elif "could not find relevant information" in answer_lower:
+        answer_type = "⚠️ Missing policy information"
+    else:
+        answer_type = "✅ Answered from policy"
+
+    print(f"Answer: {answer_text}")
+    print(f"Answer Type: {answer_type}")
+    print(f"Confidence: {confidence}")
+    print(f"Sources Cited: {sources}")
+    print(f"Retrieval Scores: {[f'{s:.3f}' for s in scores]}")
     print(f"Expected: {question_data['expected']}")
 
     print("\nEvaluation Criteria:")
@@ -83,10 +98,11 @@ def evaluate_answer(question_data, result):
     return {
         "question": question_data['question'],
         "category": question_data['category'],
+        "answer_type": answer_type,
         "score": score_map.get(score, '❓'),
-        "confidence": result.get('confidence', 'N/A'),
-        "sources_cited": result.get('sources_cited', []),
-        "retrieval_quality": check_retrieval_quality(result.get('retrieval_scores', [])),
+        "confidence": confidence,
+        "sources_cited": sources,
+        "retrieval_quality": check_retrieval_quality(scores),
         "notes": notes
     }
 
