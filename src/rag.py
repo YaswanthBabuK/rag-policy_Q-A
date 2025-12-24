@@ -135,7 +135,11 @@ class PolicyRAG:
         result = self._parse_response(response.text)
 
         # Ensure sources only for valid answers
-        if not result["sources_cited"]:
+        if(
+            not result["sources_cited"]
+            and "outside the scope" not in result["answer"].lower()
+            and "could not find" not in result["answer"].lower()
+        ):
             result["sources_cited"] = [doc.metadata.get("source") for doc in docs]
 
         result["retrieval_scores"] = scores
